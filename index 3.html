@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funnel Autopsy — Diagnostic Dashboard</title>
+<meta name="description" content="Input your ad and funnel metrics. Get a brutally honest breakdown of what's killing your conversions.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0c14;
+  --bg-card: #141420;
+  --bg-card-border: #1c1c2e;
+  --bg-input: #0e0e18;
+  --text: #e4e4ec;
+  --text-dim: #6a6a82;
+  --text-muted: #33334a;
+  --red: #ff4d4d;
+  --orange: #ff9f43;
+  --yellow: #ffd166;
+  --green: #2ed573;
+  --blue: #45aaf2;
+  --slider-track: #1a1a2e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; position: relative; z-index: 1; }
+
+/* HEADER */
+.header { text-align: center; margin-bottom: 40px; }
+.header-badge {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--orange);
+  border: 1px solid rgba(255, 159, 67, 0.25);
+  padding: 5px 14px;
+  border-radius: 3px;
+  margin-bottom: 16px;
+}
+.header h1 {
+  font-size: clamp(28px, 4.5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.header h1 .accent {
+  background: linear-gradient(135deg, var(--red), var(--orange));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header p { color: var(--text-dim); font-size: 14px; line-height: 1.6; max-width: 520px; margin: 0 auto; }
+
+/* QUICK STATUS BANNER */
+.status-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 12px;
+  padding: 20px 28px;
+  margin-bottom: 36px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: border-color 0.4s;
+}
+.status-banner.status-good { border-color: rgba(46, 213, 115, 0.3); }
+.status-banner.status-warning { border-color: rgba(255, 159, 67, 0.3); }
+.status-banner.status-critical { border-color: rgba(255, 77, 77, 0.3); }
+.status-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.status-content { flex: 1; }
+.status-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.status-banner.status-good .status-label { color: var(--green); }
+.status-banner.status-warning .status-label { color: var(--orange); }
+.status-banner.status-critical .status-label { color: var(--red); }
+.status-text { font-size: 14px; line-height: 1.7; color: var(--text); }
+.status-text strong { font-weight: 700; }
+
+/* SECTION LABELS */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label.ads { color: var(--orange); }
+.section-label.funnel { color: var(--blue); }
+
+/* METRICS GRID */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 14px;
+  margin-bottom: 40px;
+}
+
+/* METRIC CARD */
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 12px;
+  padding: 20px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.metric-card.status-green { box-shadow: 0 0 24px -8px rgba(46,213,115,0.12); border-color: rgba(46,213,115,0.2); }
+.metric-card.status-orange { box-shadow: 0 0 24px -8px rgba(255,159,67,0.12); border-color: rgba(255,159,67,0.2); }
+.metric-card.status-red { box-shadow: 0 0 24px -8px rgba(255,77,77,0.12); border-color: rgba(255,77,77,0.2); }
+
+.metric-health {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  transition: color 0.3s;
+  min-height: 28px;
+}
+.color-green { color: var(--green); }
+.color-orange { color: var(--orange); }
+.color-red { color: var(--red); }
+
+/* Vertical Slider */
+.slider-container {
+  position: relative;
+  width: 12px;
+  height: 140px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.slider-bg { position: absolute; inset: 0; background: var(--slider-track); border-radius: 6px; }
+.slider-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 6px; transition: background 0.25s; }
+.slider-fill.fill-green { background: linear-gradient(to top, var(--green), rgba(46,213,115,0.45)); }
+.slider-fill.fill-orange { background: linear-gradient(to top, var(--orange), rgba(255,159,67,0.45)); }
+.slider-fill.fill-red { background: linear-gradient(to top, var(--red), rgba(255,77,77,0.45)); }
+
+.slider-thumb {
+  position: absolute; left: 50%; transform: translate(-50%, 50%);
+  width: 24px; height: 24px; background: #fff; border-radius: 50%;
+  z-index: 2; pointer-events: none; transition: box-shadow 0.25s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.slider-thumb.glow-green { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 16px rgba(46,213,115,0.35); }
+.slider-thumb.glow-orange { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 16px rgba(255,159,67,0.3); }
+.slider-thumb.glow-red { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 16px rgba(255,77,77,0.35); }
+
+.metric-name {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;
+  font-weight: 500; line-height: 1.4;
+}
+.metric-benchmark {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  color: var(--text-muted); letter-spacing: 0.5px;
+}
+
+.metric-input-wrap { margin-top: 8px; width: 100%; }
+.metric-input {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--bg-card-border);
+  border-radius: 6px; padding: 7px 8px; color: var(--text);
+  font-family: 'DM Mono', monospace; font-size: 12px; text-align: center;
+  outline: none; transition: border-color 0.2s;
+}
+.metric-input:focus { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(255,159,67,0.1); }
+.metric-input::placeholder { color: var(--text-muted); }
+
+/* LEGEND */
+.legend {
+  display: flex; justify-content: center; gap: 24px;
+  margin-top: 8px; margin-bottom: 16px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.legend-dot.red { background: var(--red); }
+.legend-dot.orange { background: var(--orange); }
+.legend-dot.green { background: var(--green); }
+
+/* SUBMIT BUTTON */
+.submit-wrap { text-align: center; margin: 40px 0 16px; }
+.submit-btn {
+  background: linear-gradient(135deg, var(--red), var(--orange));
+  color: white; border: none; padding: 18px 56px;
+  font-size: 15px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 1.5px; text-transform: uppercase; border-radius: 10px;
+  cursor: pointer; transition: all 0.3s;
+}
+.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255, 77, 77, 0.3); }
+.submit-btn:active { transform: translateY(0); }
+
+/* ANALYSIS SECTION */
+.analysis-section {
+  margin-top: 40px; display: none; animation: fadeUp 0.6s ease;
+}
+.analysis-section.visible { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.analysis-card {
+  background: var(--bg-card); border: 1px solid var(--bg-card-border);
+  border-radius: 14px; padding: 36px 32px; position: relative; overflow: hidden;
+}
+.analysis-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--red), var(--orange), var(--yellow), var(--green));
+}
+
+.analysis-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+}
+.analysis-header-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: rgba(255, 159, 67, 0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.analysis-header-text {
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--orange); font-weight: 500;
+}
+
+/* Analysis content styling */
+.analysis-body { font-size: 15px; line-height: 1.85; color: var(--text-dim); }
+
+.analysis-verdict {
+  background: rgba(255, 77, 77, 0.05);
+  border: 1px solid rgba(255, 77, 77, 0.15);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+.analysis-verdict.good-verdict {
+  background: rgba(46, 213, 115, 0.05);
+  border-color: rgba(46, 213, 115, 0.15);
+}
+.verdict-tag {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--red); font-weight: 500; margin-bottom: 8px;
+}
+.good-verdict .verdict-tag { color: var(--green); }
+.verdict-text {
+  font-size: 18px; font-weight: 700; color: var(--text);
+  line-height: 1.4; letter-spacing: -0.3px;
+}
+
+.analysis-section-block { margin-bottom: 28px; }
+.analysis-section-block:last-child { margin-bottom: 0; }
+
+.analysis-section-title {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--orange); font-weight: 500;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.analysis-p { margin-bottom: 12px; font-size: 14px; line-height: 1.8; color: var(--text-dim); }
+.analysis-p strong { color: var(--text); font-weight: 600; }
+.analysis-p .highlight { color: var(--orange); font-weight: 600; }
+.analysis-p .bad { color: var(--red); font-weight: 600; }
+.analysis-p .good { color: var(--green); font-weight: 600; }
+
+.fix-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+}
+.fix-number {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--orange); font-weight: 500; margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.fix-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.fix-body { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+.fix-body strong { color: var(--text); }
+
+.math-box {
+  background: rgba(255, 159, 67, 0.04);
+  border: 1px solid rgba(255, 159, 67, 0.12);
+  border-radius: 8px;
+  padding: 18px 22px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+.math-box strong { color: var(--text); }
+.math-box .projection { color: var(--green); font-weight: 500; }
+
+/* Re-run */
+.rerun-wrap { text-align: center; margin-top: 24px; }
+.rerun-btn {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--bg-card-border); padding: 10px 28px;
+  font-size: 12px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.5px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.rerun-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+@media (max-width: 768px) {
+  .metrics-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .metric-card { padding: 14px 10px 14px; }
+  .slider-container { height: 110px; }
+  .metric-health { font-size: 16px; }
+  .page { padding: 20px 14px 48px; }
+  .analysis-card { padding: 24px 18px; }
+  .submit-btn { padding: 16px 36px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-badge">Performance Diagnostic</div>
+    <h1>Funnel <span class="accent">Autopsy</span></h1>
+    <p>Drag the sliders or type values manually. Hit "Run Diagnosis" for a full analysis of what's killing your conversions.</p>
+  </div>
+
+  <div id="status-banner" class="status-banner status-warning">
+    <div class="status-icon">🔍</div>
+    <div class="status-content">
+      <div class="status-label">Quick Status</div>
+      <div id="status-text" class="status-text">Adjust your metrics below, then hit <strong>Run Diagnosis</strong> for the full breakdown.</div>
+    </div>
+  </div>
+
+  <div class="section-label ads"><span>📡</span> SOFT METRICS — AD SIDE</div>
+  <div class="metrics-grid" id="ad-metrics"></div>
+
+  <div class="section-label funnel"><span>💰</span> HARD METRICS — FUNNEL SIDE</div>
+  <div class="metrics-grid" id="funnel-metrics"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot red"></div> Below KPI</div>
+    <div class="legend-item"><div class="legend-dot orange"></div> Getting there</div>
+    <div class="legend-item"><div class="legend-dot green"></div> Within KPI</div>
+  </div>
+
+  <div class="submit-wrap">
+    <button class="submit-btn" id="submit-btn" onclick="runDiagnosis()">🩺 Run Diagnosis</button>
+  </div>
+
+  <div class="analysis-section" id="analysis-section">
+    <div class="analysis-card">
+      <div class="analysis-header">
+        <div class="analysis-header-icon">🔬</div>
+        <div class="analysis-header-text">Full Diagnostic Analysis</div>
+      </div>
+      <div class="analysis-body" id="analysis-body"></div>
+    </div>
+    <div class="rerun-wrap">
+      <button class="rerun-btn" onclick="runDiagnosis()">↻ Re-run with updated numbers</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== METRIC DEFINITIONS =====
+const adMetrics = [
+  { id: 'cpc', name: 'CPC (Link)', benchmark: '< $1.50', unit: '$', min: 0, max: 8, step: 0.01, defaultVal: 1.50, decimals: 2, invert: true, thresholds: { good: 1.0, warning: 2.5 } },
+  { id: 'ctr', name: 'CTR (Link)', benchmark: '> 3%', unit: '%', min: 0, max: 12, step: 0.1, defaultVal: 3, decimals: 1, invert: false, thresholds: { good: 3, warning: 1.5 } },
+  { id: 'cpm', name: 'CPM', benchmark: '$30-$50', unit: '$', min: 0, max: 100, step: 0.5, defaultVal: 40, decimals: 2, invert: true, thresholds: { good: 30, warning: 50 } },
+  { id: 'hook', name: 'Hook Rate', benchmark: '> 50%', unit: '%', min: 0, max: 100, step: 1, defaultVal: 50, decimals: 0, invert: false, thresholds: { good: 50, warning: 30 } },
+  { id: 'hold', name: 'Hold Rate (50%)', benchmark: '> 25%', unit: '%', min: 0, max: 60, step: 1, defaultVal: 25, decimals: 0, invert: false, thresholds: { good: 25, warning: 15 } },
+  { id: 'freq', name: 'Frequency', benchmark: '< 2.0', unit: 'x', min: 0, max: 6, step: 0.1, defaultVal: 2, decimals: 1, invert: true, thresholds: { good: 1.5, warning: 2.5 } },
+];
+
+const funnelMetrics = [
+  { id: 'cvr', name: 'CVR', benchmark: '> 3-5%', unit: '%', min: 0, max: 12, step: 0.1, defaultVal: 3, decimals: 1, invert: false, thresholds: { good: 3, warning: 1.5 } },
+  { id: 'atc_rate', name: 'ATC Rate', benchmark: '> 10%', unit: '%', min: 0, max: 30, step: 0.5, defaultVal: 10, decimals: 1, invert: false, thresholds: { good: 10, warning: 5 } },
+  { id: 'atc_buy', name: 'ATC→Buy', benchmark: '> 30%', unit: '%', min: 0, max: 70, step: 1, defaultVal: 30, decimals: 0, invert: false, thresholds: { good: 30, warning: 18 } },
+  { id: 'aov', name: 'AOV', benchmark: '2x product', unit: '$', min: 0, max: 200, step: 1, defaultVal: 50, decimals: 0, invert: false, thresholds: { good: 60, warning: 35 } },
+  { id: 'ltv_aov', name: 'LTV:AOV', benchmark: '3:1', unit: 'x', min: 0, max: 8, step: 0.1, defaultVal: 3, decimals: 1, invert: false, thresholds: { good: 3, warning: 1.5 } },
+  { id: 'cac', name: 'CAC', benchmark: '< ½ AOV', unit: '$', min: 0, max: 150, step: 1, defaultVal: 25, decimals: 0, invert: true, thresholds: { good: 25, warning: 60 } },
+];
+
+const state = {};
+
+function getSeverity(m, val) {
+  if (m.invert) {
+    if (val <= m.thresholds.good) return 'good';
+    if (val >= m.thresholds.warning) return 'critical';
+    return 'warning';
+  } else {
+    if (val >= m.thresholds.good) return 'good';
+    if (val <= m.thresholds.warning) return 'critical';
+    return 'warning';
+  }
+}
+
+function sevColor(sev) { return sev === 'good' ? 'green' : sev === 'warning' ? 'orange' : 'red'; }
+
+function valueToSliderPct(m, val) {
+  const rawPct = ((val - m.min) / (m.max - m.min)) * 100;
+  return m.invert ? 100 - rawPct : rawPct;
+}
+
+function sliderPctToValue(m, pct) {
+  const rawPct = m.invert ? 100 - pct : pct;
+  const raw = m.min + (rawPct / 100) * (m.max - m.min);
+  const stepped = Math.round(raw / m.step) * m.step;
+  return Math.min(m.max, Math.max(m.min, stepped));
+}
+
+function getHealthPct(m, val) {
+  if (m.invert) {
+    if (val <= m.min) return 100;
+    if (val >= m.max) return 0;
+    return Math.round(((m.max - val) / (m.max - m.min)) * 100);
+  } else {
+    if (val >= m.max) return 100;
+    if (val <= m.min) return 0;
+    return Math.round(((val - m.min) / (m.max - m.min)) * 100);
+  }
+}
+
+function formatVal(m, val) {
+  if (m.unit === '$') return '$' + val.toFixed(m.decimals);
+  if (m.unit === '%') return val.toFixed(m.decimals) + '%';
+  if (m.unit === 'x') return val.toFixed(m.decimals) + 'x';
+  return val.toFixed(m.decimals);
+}
+
+function createCard(m) {
+  state[m.id] = m.defaultVal;
+  const card = document.createElement('div');
+  card.id = `card-${m.id}`;
+  const sev = getSeverity(m, m.defaultVal);
+  const col = sevColor(sev);
+  const sliderPct = valueToSliderPct(m, m.defaultVal);
+  const health = getHealthPct(m, m.defaultVal);
+
+  card.className = `metric-card status-${col}`;
+  card.innerHTML = `
+    <div class="metric-health color-${col}" id="health-${m.id}">${health}%</div>
+    <div class="slider-container" id="slider-${m.id}">
+      <div class="slider-bg"></div>
+      <div class="slider-fill fill-${col}" id="fill-${m.id}" style="height:${sliderPct}%"></div>
+      <div class="slider-thumb glow-${col}" id="thumb-${m.id}" style="bottom:calc(${sliderPct}% - 12px)"></div>
+    </div>
+    <div class="metric-name">${m.name}</div>
+    <div class="metric-benchmark">${m.benchmark}</div>
+    <div class="metric-input-wrap">
+      <input class="metric-input" id="input-${m.id}" type="text" value="${formatVal(m, m.defaultVal)}">
+    </div>
+  `;
+
+  const sliderEl = card.querySelector(`#slider-${m.id}`);
+  let dragging = false;
+  function handleDrag(clientY) {
+    const rect = sliderEl.getBoundingClientRect();
+    const pct = Math.min(100, Math.max(0, ((rect.bottom - clientY) / rect.height) * 100));
+    state[m.id] = sliderPctToValue(m, pct);
+    refreshCard(m);
+    updateQuickStatus();
+  }
+  sliderEl.addEventListener('mousedown', (e) => { dragging = true; handleDrag(e.clientY); e.preventDefault(); });
+  sliderEl.addEventListener('touchstart', (e) => { dragging = true; handleDrag(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+  document.addEventListener('mousemove', (e) => { if (dragging) handleDrag(e.clientY); });
+  document.addEventListener('touchmove', (e) => { if (dragging) handleDrag(e.touches[0].clientY); }, { passive: false });
+  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('touchend', () => { dragging = false; });
+
+  const input = card.querySelector(`#input-${m.id}`);
+  input.addEventListener('focus', () => { input.value = parseFloat(state[m.id].toFixed(m.decimals)); input.select(); });
+  input.addEventListener('blur', () => {
+    let raw = parseFloat(input.value);
+    if (isNaN(raw)) raw = m.defaultVal;
+    raw = Math.min(m.max, Math.max(m.min, raw));
+    state[m.id] = raw;
+    input.value = formatVal(m, raw);
+    refreshCard(m);
+    updateQuickStatus();
+  });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+  return card;
+}
+
+function refreshCard(m) {
+  const val = state[m.id];
+  const sev = getSeverity(m, val);
+  const col = sevColor(sev);
+  const sliderPct = valueToSliderPct(m, val);
+  const health = getHealthPct(m, val);
+  document.getElementById(`card-${m.id}`).className = `metric-card status-${col}`;
+  document.getElementById(`health-${m.id}`).textContent = health + '%';
+  document.getElementById(`health-${m.id}`).className = `metric-health color-${col}`;
+  document.getElementById(`fill-${m.id}`).style.height = sliderPct + '%';
+  document.getElementById(`fill-${m.id}`).className = `slider-fill fill-${col}`;
+  document.getElementById(`thumb-${m.id}`).style.bottom = `calc(${sliderPct}% - 12px)`;
+  document.getElementById(`thumb-${m.id}`).className = `slider-thumb glow-${col}`;
+  document.getElementById(`input-${m.id}`).value = formatVal(m, val);
+}
+
+function updateQuickStatus() {
+  const allMetrics = [...adMetrics, ...funnelMetrics];
+  const criticals = [], warnings = [];
+  allMetrics.forEach(m => {
+    const sev = getSeverity(m, state[m.id]);
+    if (sev === 'critical') criticals.push(m.name);
+    else if (sev === 'warning') warnings.push(m.name);
+  });
+  const banner = document.getElementById('status-banner');
+  const text = document.getElementById('status-text');
+  if (criticals.length > 0) {
+    banner.className = 'status-banner status-critical';
+    text.innerHTML = `⚡ <strong>${criticals.length} metric${criticals.length > 1 ? 's' : ''} below KPI:</strong> ${criticals.join(', ')}. ${warnings.length > 0 ? `Plus ${warnings.length} in the warning zone. ` : ''}Hit <strong>Run Diagnosis</strong> for the full breakdown.`;
+  } else if (warnings.length > 0) {
+    banner.className = 'status-banner status-warning';
+    text.innerHTML = `⚡ <strong>Almost there.</strong> ${warnings.join(', ')} ${warnings.length > 1 ? 'are' : 'is'} in the warning zone. Hit <strong>Run Diagnosis</strong> for recommendations.`;
+  } else {
+    banner.className = 'status-banner status-good';
+    text.innerHTML = `✅ <strong>All metrics within KPI.</strong> Hit <strong>Run Diagnosis</strong> for scaling advice.`;
+  }
+}
+
+// ===== CLIENT-SIDE DIAGNOSIS ENGINE =====
+function runDiagnosis() {
+  const s = {};
+  [...adMetrics, ...funnelMetrics].forEach(m => {
+    s[m.id] = { val: state[m.id], sev: getSeverity(m, state[m.id]), formatted: formatVal(m, state[m.id]) };
+  });
+
+  const criticals = [];
+  const warnings = [];
+  const goods = [];
+  [...adMetrics, ...funnelMetrics].forEach(m => {
+    const sev = s[m.id].sev;
+    if (sev === 'critical') criticals.push(m);
+    else if (sev === 'warning') warnings.push(m);
+    else goods.push(m);
+  });
+
+  // ===== PATTERN DETECTION =====
+  // Detect interconnected problems, not isolated ones
+  const patterns = [];
+
+  // PATTERN: Creative problem (low CTR + low hook + high CPC)
+  if (s.ctr.sev !== 'good' && s.hook.sev !== 'good') {
+    patterns.push({
+      id: 'creative_problem',
+      priority: 1,
+      verdict: `Your ads aren't stopping the scroll. A ${s.hook.formatted} hook rate feeding into a ${s.ctr.formatted} CTR means your creative is the bottleneck — everything downstream is starving for quality traffic.`,
+      story: `Here's the chain reaction: your hook rate is at ${s.hook.formatted}, which means ${100 - state.hook}% of people scroll right past you in the first 3 seconds. That's tanking your CTR to ${s.ctr.formatted}, which makes Meta charge you more per click (CPC: ${s.cpc.formatted}). You're paying a premium for traffic that shouldn't cost this much. ${s.hold.sev !== 'good' ? `And your hold rate at ${s.hold.formatted} tells me even the people who DO stop aren't staying — your ad body isn't delivering on what the hook promises.` : `The silver lining: your hold rate at ${s.hold.formatted} is decent, so people who DO stop are watching. You just need to stop more of them.`}`,
+      fixes: [
+        { title: 'Test 5 new hooks this week', body: `Your first 1-3 seconds are the problem. Film 5 different opening hooks — try a bold claim, a direct callout ("Hey, if you're still using XYZ..."), a visual pattern interrupt, and a controversy take. Keep the same ad body, just swap the hook. Your ${s.hook.formatted} hook rate should be above 50%.` },
+        { title: 'Match your hook to your audience\'s #1 pain point', body: `Don't open with your product — open with their problem. The hook should make them feel seen, not sold to. Lead with the emotion, then transition to the solution.` },
+        { title: `${s.hold.sev !== 'good' ? 'Tighten the ad body — cut the fat' : 'Scale the hooks that work'}`, body: `${s.hold.sev !== 'good' ? `Your hold rate at ${s.hold.formatted} means you're losing people mid-video. Every second needs to earn the next second. Add pattern interrupts every 3-5 seconds — text overlays, angle changes, b-roll cuts. If you're doing talking head, vary your energy and location.` : `With a ${s.hold.formatted} hold rate, your ad body is solid. Once you find a hook that pushes past 50%, you'll have a full winner. Focus all testing energy on hooks.`}` }
+      ]
+    });
+  }
+
+  // PATTERN: Audience fatigue (high frequency + rising CPM + declining CTR)
+  if (s.freq.sev !== 'good' && (s.cpm.sev !== 'good' || s.ctr.sev !== 'good')) {
+    patterns.push({
+      id: 'audience_fatigue',
+      priority: s.freq.sev === 'critical' ? 1 : 2,
+      verdict: `Your audience is fatigued. Frequency at ${s.freq.formatted} combined with ${s.cpm.sev !== 'good' ? `a CPM of ${s.cpm.formatted}` : `declining CTR at ${s.ctr.formatted}`} means you're showing the same ad to the same people too many times.`,
+      story: `When frequency climbs past 2.0, everything starts to rot. People have seen your ad — they've made their decision. Showing it again doesn't convince them, it annoys them. That's why your ${s.cpm.sev !== 'good' ? `CPM is bloated at ${s.cpm.formatted} — Meta is charging you more because your relevance score is dropping` : `CTR has fallen to ${s.ctr.formatted} — same people, same ad, diminishing returns`}. This is a death spiral: high frequency → lower engagement → higher costs → worse performance → you think you need to spend more → frequency goes even higher.`,
+      fixes: [
+        { title: 'Rotate in 3-5 new creatives immediately', body: `Don't iterate on the same angle — bring completely new hooks, new scripts, new visual styles. Your audience has seen your current creative enough. Fresh creative resets the clock on audience fatigue.` },
+        { title: 'Expand your audience by 2-3x', body: `Your current audience pool is tapped. Test broader interests, stack lookalikes (1%, 3%, 5%), or go broad with Advantage+ targeting. More people = lower frequency at the same spend.` },
+        { title: 'Reduce daily budget or spread across more ad sets', body: `If you can't get new creative out fast enough, temporarily reduce spend to bring frequency back under 2.0. It's better to spend less efficiently than to burn your audience.` }
+      ]
+    });
+  }
+
+  // PATTERN: Traffic quality problem (good CTR but bad CVR/ATC)
+  if (s.ctr.sev === 'good' && (s.cvr.sev !== 'good' || s.atc_rate.sev !== 'good')) {
+    patterns.push({
+      id: 'traffic_quality',
+      priority: 1,
+      verdict: `Your ads are getting clicks but your funnel isn't converting. CTR at ${s.ctr.formatted} looks great on the surface, but a ${s.cvr.formatted} CVR and ${s.atc_rate.formatted} ATC rate tells me you're attracting the wrong people — or your landing experience doesn't match the ad promise.`,
+      story: `This is one of the most common and most expensive problems. You've got a high CTR — people are clicking. But they're not buying. That means one of two things: either your ad is attracting curiosity clickers who were never going to buy (your targeting or creative is too broad/clickbaity), OR your product page doesn't deliver on what the ad promised. ${s.atc_rate.sev === 'critical' ? `Your ATC rate at ${s.atc_rate.formatted} suggests the product page is the main issue — people land and immediately bounce.` : ''} ${s.atc_buy.sev === 'critical' ? `And with ATC→Buy at ${s.atc_buy.formatted}, even the people who DO add to cart are abandoning at checkout.` : ''}`,
+      fixes: [
+        { title: 'Audit your ad-to-page message match', body: `Pull up your top ad creative and your product page side by side. Does the headline match the ad promise? Does the first thing they see reinforce why they clicked? If your ad says "solve X" and your page opens with "welcome to our store," you've lost them. The transition from ad to page should feel seamless.` },
+        { title: `Fix your product page ${s.atc_rate.sev === 'critical' ? '(this is urgent)' : 'above the fold'}`, body: `Your ATC rate at ${s.atc_rate.formatted} means the page isn't convincing them. Focus on: hero image quality, clear price + value presentation, 3-5 reviews visible above the fold, and a CTA that stands out. They should understand what they're buying and why within 5 seconds of landing.` },
+        { title: 'Narrow your targeting to buyer-intent audiences', body: `High CTR + low CVR often means you're too broad. Test purchase-based lookalikes, narrow by age/demo to match your actual buyer profile, or exclude people who've visited but never purchased. You want fewer, better clicks — not more cheap ones.` }
+      ]
+    });
+  }
+
+  // PATTERN: Checkout/trust problem (good ATC but bad ATC→Buy)
+  if (s.atc_rate.sev === 'good' && s.atc_buy.sev !== 'good') {
+    patterns.push({
+      id: 'checkout_problem',
+      priority: 1,
+      verdict: `Your product page is working but your checkout is killing your sales. ${s.atc_rate.formatted} ATC rate is solid — people want to buy. But only ${s.atc_buy.formatted} actually complete the purchase. That's a checkout trust or friction problem.`,
+      story: `Think about what happens between "add to cart" and "purchase." Something in that gap is scaring them off. The most common killers: surprise shipping costs that show up at checkout, being forced to create an account, too many form fields, lack of payment options, or the checkout page just doesn't feel trustworthy. ${s.aov.sev !== 'good' ? `With your AOV at ${s.aov.formatted}, shipping costs as a percentage of the order feel even bigger to the customer.` : ''} Every percentage point you improve here goes straight to your bottom line — this is the highest-leverage fix in your entire funnel.`,
+      fixes: [
+        { title: 'Show total cost BEFORE checkout', body: `If customers are surprised by shipping costs at checkout, they bail. Show shipping costs on the product page, or offer free shipping above a threshold. No surprises = fewer abandoned carts.` },
+        { title: 'Add trust signals to your checkout', body: `SSL badge, money-back guarantee, payment method icons (Visa, Mastercard, PayPal, Apple Pay), and a "secure checkout" label. These seem basic but they move the needle hard on a ${s.atc_buy.formatted} ATC→Buy rate. Also enable guest checkout — never force account creation.` },
+        { title: 'Set up abandoned cart flows (email + SMS)', body: `This is free money. 3-email abandoned cart sequence: Email 1 at 1 hour (reminder), Email 2 at 24 hours (social proof), Email 3 at 48 hours (urgency/discount). You'll recover 10-15% of abandoned carts minimum.` }
+      ]
+    });
+  }
+
+  // PATTERN: Offer/economics problem (low AOV + high CAC + low LTV)
+  if (s.aov.sev !== 'good' && (s.cac.sev !== 'good' || s.ltv_aov.sev !== 'good')) {
+    patterns.push({
+      id: 'economics_problem',
+      priority: s.aov.sev === 'critical' && s.cac.sev === 'critical' ? 1 : 2,
+      verdict: `Your unit economics are broken. AOV at ${s.aov.formatted} ${s.cac.sev !== 'good' ? `with a CAC of ${s.cac.formatted}` : ''} ${s.ltv_aov.sev !== 'good' ? `and an LTV:AOV of ${s.ltv_aov.formatted}` : ''} means you're not making enough per customer to sustain growth.`,
+      story: `This is a math problem, not a marketing problem. ${s.cac.sev !== 'good' ? `You're paying ${s.cac.formatted} to acquire a customer who spends ${s.aov.formatted} — ` : `Your average order is ${s.aov.formatted} — `}${s.ltv_aov.sev !== 'good' ? `and they're only coming back ${s.ltv_aov.formatted} times, so your lifetime value barely exceeds your first order` : ''}. You can't optimize your way out of bad economics. You need to either make more per order, get them to come back more often, or both. ${s.cac.sev === 'critical' ? `Right now you're probably losing money or barely breaking even on the first purchase.` : ''}`,
+      fixes: [
+        { title: 'Add a bundle or "most popular" package', body: `The easiest AOV lever. Create a 2-pack or 3-pack bundle priced at 20-30% discount vs buying individually. Pre-select the bundle as the default option. Most stores see a 30-50% AOV lift just from adding bundles. Your ${s.aov.formatted} AOV should be 2x your base product price minimum.` },
+        { title: `${s.ltv_aov.sev !== 'good' ? 'Build a post-purchase email flow to drive repeat purchases' : 'Add a post-purchase one-click upsell'}`, body: `${s.ltv_aov.sev !== 'good' ? `Your LTV:AOV at ${s.ltv_aov.formatted} tells me you have no retention engine. Set up: Day 3 — delivery excitement email. Day 14 — "how's it going" + usage tips. Day 30 — replenishment/reorder CTA with a small incentive. Day 45 — new product cross-sell. Get this ratio to 3:1 and your CAC tolerance doubles.` : `Show a complementary product immediately after purchase (before the thank you page). One-click upsells convert at 5-15% and are pure margin since you already paid for the customer.`}` },
+        { title: 'Increase your free shipping threshold', body: `Set it 20-30% above your current AOV. If your AOV is ${s.aov.formatted}, set free shipping at $${Math.round(state.aov * 1.3)}. Customers will add more to their cart to hit the threshold. Simple but effective.` }
+      ]
+    });
+  }
+
+  // PATTERN: Product page problem (low ATC rate specifically)
+  if (s.atc_rate.sev === 'critical' && !patterns.find(p => p.id === 'traffic_quality')) {
+    patterns.push({
+      id: 'product_page_problem',
+      priority: 1,
+      verdict: `Your product page isn't converting — only ${s.atc_rate.formatted} of visitors add to cart. This is the #1 bottleneck in your entire funnel right now.`,
+      story: `People are landing on your page and leaving without adding to cart. At ${s.atc_rate.formatted}, your product page is failing to convince them. This could be weak product images, unclear pricing or value proposition, no social proof, poor mobile experience, or the offer just isn't compelling enough. ${s.ctr.sev === 'good' ? `Your ads are doing their job getting people there (CTR: ${s.ctr.formatted}) — the page is where it falls apart.` : ''} Every 1% improvement in ATC rate flows directly to more sales without spending another dollar on ads.`,
+      fixes: [
+        { title: 'Rebuild your hero section', body: `First impression is everything. You need: a lifestyle image (not just product-on-white), clear product name, price with anchor/comparison, a 1-line value prop, and 4.5+ star rating with review count — all visible without scrolling. If any of these are missing or buried, that's your problem.` },
+        { title: 'Add 5+ reviews with photos above the fold', body: `No reviews = no trust = no purchase. If you don't have reviews, use a review app to import from AliExpress/Amazon or run a giveaway to seed 10-20 genuine reviews with photos. Social proof is the #1 conversion lever on product pages.` },
+        { title: 'Simplify your offer — remove decision fatigue', body: `Too many variants, confusing options, or unclear pricing kills ATC rate. Make the default option the one you want them to buy. Reduce variants to 3 or fewer. Make the "best value" bundle visually obvious. One clear CTA button, one clear action.` }
+      ]
+    });
+  }
+
+  // PATTERN: CPM problem without creative issues (expensive media)
+  if (s.cpm.sev === 'critical' && s.ctr.sev === 'good' && s.hook.sev === 'good') {
+    patterns.push({
+      id: 'cpm_problem',
+      priority: 2,
+      verdict: `Your creative is performing well but you're overpaying for impressions. CPM at ${s.cpm.formatted} with a solid CTR of ${s.ctr.formatted} means it's not a creative problem — it's an audience or competition problem.`,
+      story: `High CPM + good engagement is usually one of three things: you're targeting a very competitive audience that every other advertiser wants, your audience pool is too small (which ties into your frequency at ${s.freq.formatted}), or you're in a seasonally expensive window. Your creative engagement is fine — Meta just charges more to reach these people.`,
+      fixes: [
+        { title: 'Test broader audiences', body: `Your current targeting is expensive. Test Advantage+ with broad targeting, use 5-10% lookalikes instead of 1%, or test completely new interest categories. Broader = cheaper CPMs while your creative does the qualifying.` },
+        { title: 'Test different placements', body: `Reels, Stories, and Feed all have different CPMs. If you're only in Feed, test Reels — often 30-40% cheaper CPMs. Let Meta optimize placements with Advantage+ placements on.` },
+        { title: 'Shift to off-peak ad scheduling', body: `If your product allows it, run ads during off-peak hours when competition is lower. Test day-parting to find your cheapest CPM windows.` }
+      ]
+    });
+  }
+
+  // PATTERN: Everything is good
+  if (criticals.length === 0 && warnings.length === 0) {
+    patterns.push({
+      id: 'all_good',
+      priority: 1,
+      verdict: `Your funnel is performing at or above KPI across the board. No critical leaks. You're in scaling territory.`,
+      story: `All your metrics are in the green — that's rare and it means your creative, targeting, product page, checkout, and economics are all working. The question now isn't "what's broken" — it's "how do you pour gas on this without breaking it." Scaling is a different skill than optimizing. The goal is to increase spend while maintaining these KPIs.`,
+      fixes: [
+        { title: 'Increase budget by 20% every 3-4 days', body: `Don't 2x or 3x overnight — that resets the learning phase. Gradual scaling lets Meta's algorithm adjust. Watch your frequency and CPM as you scale — those are the first metrics to degrade.` },
+        { title: 'Duplicate winning ad sets into new campaigns', body: `Don't just increase budget on winners — duplicate them into a new CBO campaign. This gives Meta more room to find new pockets of your audience without fatiguing the original.` },
+        { title: 'Stack new creatives while things are working', body: `The biggest mistake when things are going well: not preparing for creative fatigue. Film 5-10 new variations NOW while you know what's working. When your current creative inevitably fatigues, you'll have backups ready instead of scrambling.` }
+      ]
+    });
+  }
+
+  // If no patterns matched, fallback to worst metric
+  if (patterns.length === 0 && criticals.length > 0) {
+    const worst = criticals[0];
+    const wVal = s[worst.id];
+    patterns.push({
+      id: 'generic_worst',
+      priority: 1,
+      verdict: `Your biggest bottleneck right now is ${worst.name} at ${wVal.formatted}. That's well outside the benchmark of ${worst.benchmark} and it's dragging everything else down.`,
+      story: `When ${worst.name} is this far off benchmark, it creates a ripple effect across your entire funnel. ${worst.invert ? 'Every dollar is being stretched too thin.' : 'You\'re leaving serious money on the table.'} Focus all your energy here first — fixing this one metric will have the biggest downstream impact on your profitability.`,
+      fixes: [
+        { title: `Get ${worst.name} to benchmark (${worst.benchmark})`, body: `This is your #1 priority. Don't try to fix everything at once — get this one number right and reassess. A/B test aggressively against this specific metric.` },
+        { title: 'Run a competitor audit', body: `Look at what top stores in your niche are doing differently. Study their ads, their product pages, their checkout flow. Model what's working — don't copy, but understand the principles.` },
+        { title: 'Revisit your offer structure', body: `Sometimes the fix isn't optimization — it's a fundamentally better offer. Can you add more value without adding cost? Can you reframe the product? Can you bundle differently?` }
+      ]
+    });
+  }
+
+  // Sort patterns by priority and pick the top one
+  patterns.sort((a, b) => a.priority - b.priority);
+  const primary = patterns[0];
+  const secondary = patterns.length > 1 ? patterns[1] : null;
+
+  // ===== CALCULATE MATH PROJECTION =====
+  let mathHTML = '';
+  const cac = state.cac;
+  const aov = state.aov;
+  const ltv = state.aov * state.ltv_aov;
+  const currentROAS = aov > 0 && cac > 0 ? (aov / cac).toFixed(2) : '—';
+  const currentLTVtoCAC = cac > 0 ? (ltv / cac).toFixed(2) : '—';
+
+  if (primary.id === 'creative_problem') {
+    const projectedCTR = Math.max(state.ctr, 3);
+    const ctrImprovement = projectedCTR / Math.max(state.ctr, 0.1);
+    const projectedCPC = state.cpc / ctrImprovement;
+    mathHTML = `<strong>Current state:</strong> ${s.ctr.formatted} CTR → ${s.cpc.formatted} CPC → ${currentROAS}x first-order ROAS<br><br><strong>If you fix your creative and hit 3%+ CTR:</strong><br>Projected CPC: <span class="projection">~$${projectedCPC.toFixed(2)}</span><br>That means <span class="projection">~${Math.round((ctrImprovement - 1) * 100)}% more clicks</span> for the same spend, which flows into more conversions without touching your funnel.`;
+  } else if (primary.id === 'checkout_problem') {
+    const currentBuyRate = state.atc_buy / 100;
+    const projectedBuyRate = 0.35;
+    const improvement = projectedBuyRate / Math.max(currentBuyRate, 0.01);
+    mathHTML = `<strong>Current state:</strong> ${s.atc_buy.formatted} ATC→Buy rate<br><br><strong>If you fix checkout friction and hit 35%:</strong><br>That's <span class="projection">~${Math.round((improvement - 1) * 100)}% more completed purchases</span> from the same traffic and ad spend. Zero extra dollars on ads — pure profit. At your ${s.aov.formatted} AOV, that's potentially <span class="projection">significant additional revenue per week</span> just from fixing the checkout flow.`;
+  } else if (primary.id === 'economics_problem') {
+    const projectedAOV = Math.max(state.aov, 60);
+    const projectedLTV = projectedAOV * 3;
+    mathHTML = `<strong>Current state:</strong> ${s.aov.formatted} AOV × ${s.ltv_aov.formatted} LTV:AOV = $${ltv.toFixed(0)} lifetime value vs ${s.cac.formatted} CAC<br><br><strong>If you hit $${projectedAOV} AOV and 3:1 LTV:AOV:</strong><br>Lifetime value jumps to <span class="projection">$${projectedLTV.toFixed(0)}</span><br>That gives you a <span class="projection">${(projectedLTV / Math.max(cac, 1)).toFixed(1)}x LTV:CAC ratio</span> — enough margin to scale aggressively and still be profitable. Bundles + retention flows get you there.`;
+  } else if (primary.id === 'traffic_quality') {
+    const projectedCVR = 3;
+    const improvement = projectedCVR / Math.max(state.cvr, 0.1);
+    mathHTML = `<strong>Current state:</strong> ${s.ctr.formatted} CTR but only ${s.cvr.formatted} CVR — you're paying for clicks that don't convert<br><br><strong>If you fix message match and hit 3% CVR:</strong><br>That's <span class="projection">~${Math.round((improvement - 1) * 100)}% more sales</span> from the same traffic. Your effective CPA drops proportionally, which could bring your CAC from ${s.cac.formatted} to <span class="projection">~$${(cac / improvement).toFixed(0)}</span>.`;
+  } else if (primary.id === 'all_good') {
+    mathHTML = `<strong>Current state:</strong> ${currentROAS}x first-order ROAS | $${ltv.toFixed(0)} LTV | ${currentLTVtoCAC}x LTV:CAC<br><br><strong>At 20% budget increases every 3-4 days:</strong><br>You can potentially <span class="projection">2-3x your spend within 30 days</span> while maintaining these KPIs. The key is watching frequency (keep under 2.0) and CPM (keep under $50) as you scale. If either spikes, pause scaling and refresh creative.`;
+  } else {
+    mathHTML = `<strong>Current state:</strong> ${currentROAS}x first-order ROAS | ${s.cac.formatted} CAC | ${s.aov.formatted} AOV<br><br><strong>Fixing your #1 bottleneck to benchmark could mean:</strong> <span class="projection">Significantly improved unit economics</span> across your entire funnel. One metric at benchmark creates a compounding effect downstream.`;
+  }
+
+  // ===== RENDER ANALYSIS =====
+  const section = document.getElementById('analysis-section');
+  const body = document.getElementById('analysis-body');
+
+  const isGood = primary.id === 'all_good';
+
+  let html = `
+    <div class="analysis-verdict ${isGood ? 'good-verdict' : ''}">
+      <div class="verdict-tag">${isGood ? '✅ THE VERDICT' : '🚨 THE VERDICT'}</div>
+      <div class="verdict-text">${primary.verdict}</div>
+    </div>
+
+    <div class="analysis-section-block">
+      <div class="analysis-section-title">📊 What The Numbers Are Telling Me</div>
+      <p class="analysis-p">${primary.story}</p>
+      ${secondary && !isGood ? `<p class="analysis-p" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-card-border);">I'm also seeing a secondary issue: <strong>${secondary.verdict}</strong> Fix the primary problem first, then circle back to this.</p>` : ''}
+    </div>
+
+    <div class="analysis-section-block">
+      <div class="analysis-section-title">🔧 The Fix (Priority Order)</div>
+      ${primary.fixes.map((f, i) => `
+        <div class="fix-item">
+          <div class="fix-number">FIX #${i + 1}</div>
+          <div class="fix-title">${f.title}</div>
+          <div class="fix-body">${f.body}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="analysis-section-block">
+      <div class="analysis-section-title">🧮 The Math</div>
+      <div class="math-box">${mathHTML}</div>
+    </div>
+  `;
+
+  body.innerHTML = html;
+  section.classList.add('visible');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ===== INIT =====
+function init() {
+  const adGrid = document.getElementById('ad-metrics');
+  adMetrics.forEach(m => adGrid.appendChild(createCard(m)));
+  const funnelGrid = document.getElementById('funnel-metrics');
+  funnelMetrics.forEach(m => funnelGrid.appendChild(createCard(m)));
+  updateQuickStatus();
+}
+init();
+</script>
+</body>
+</html>
